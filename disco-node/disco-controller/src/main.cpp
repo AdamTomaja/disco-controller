@@ -6,7 +6,7 @@
 #define PIN       5 
 #define NUMPIXELS 8 
 
-const char *ssid =  "";     // replace with your wifi ssid and wpa2 key
+const char *ssid =  "UPC7F439B2";     // replace with your wifi ssid and wpa2 key
 const char *pass =  "";
 const char* mqtt_server = "192.168.0.66";
 
@@ -18,6 +18,7 @@ StaticJsonDocument<200> doc;
 
 #define MODE_NOOP 0
 #define MODE_STROBO 1
+#define MODE_STATIC 2
 
 unsigned long lastExecution = 0;
 int mode = MODE_NOOP;
@@ -82,13 +83,19 @@ void showInitializedAnimation() {
 }
 
 int stroboCycle = 0;
-uint32_t stroboColor = pixels.Color(200, 200, 200);
+uint32_t colorA = pixels.Color(200, 200, 200);
+uint32_t colorB = pixels.Color(0, 0, 0);
+
 void executeStrobo() {
   if((stroboCycle++) % 2 == 0) {
-    displayColor(pixels.Color(0, 0, 0));
+    displayColor(colorA);
   } else {
-    displayColor(stroboColor);
+    displayColor(colorB);
   }
+}
+
+void executeStatic() {
+  displayColor(colorA);
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -121,14 +128,21 @@ void callback(char* topic, byte* payload, unsigned int length) {
       mode = MODE_STROBO;
     } else if(md == "noop") {
       mode = MODE_NOOP;
+    } else if(md == "static") {
+      mode = MODE_STATIC;
     }
   } else if(cmd == "setInterval") {
     interval = doc["interval"];
-  } else if(cmd == "setStroboColor") {
+  } else if(cmd == "setColor") {
     int r = doc["r"];
     int g = doc["g"];
     int b = doc["b"];
-    stroboColor = pixels.Color(r, g, b);
+    String bank = doc["bank"];
+    if(bank == "A") {
+      colorA = pixels.Color(r, g, b);
+    } else if(bank == "B") {
+      colorB = pixels.Color(r, g, b);
+    }
   }
 }
 
@@ -158,6 +172,9 @@ void loop() {
     switch(mode) {
       case MODE_STROBO:
         executeStrobo();
+      break;
+      case MODE_STATIC:
+        executeStatic();
       break;
     }
   }

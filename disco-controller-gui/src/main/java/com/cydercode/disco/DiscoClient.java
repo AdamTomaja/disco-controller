@@ -13,13 +13,15 @@ import java.util.UUID;
 
 public class DiscoClient {
 
-    private static final String host = "localhost";
+    private final String host;
 
-    private static DiscoClient discoClient;
+    private IMqttClient publisher;
 
-    private final IMqttClient publisher;
+    public DiscoClient(String host) throws MqttException {
+        this.host = host;
+    }
 
-    private DiscoClient() throws MqttException {
+    public void connect() throws MqttException {
         String publisherId = UUID.randomUUID().toString();
         IMqttClient publisher = new MqttClient("tcp://" + host + ":1883", publisherId);
         MqttConnectOptions options = new MqttConnectOptions();
@@ -28,14 +30,6 @@ public class DiscoClient {
         options.setConnectionTimeout(10);
         publisher.connect(options);
         this.publisher = publisher;
-    }
-
-    public static DiscoClient getInstance() throws MqttException {
-        if(discoClient == null) {
-            discoClient = new DiscoClient();
-        }
-
-        return discoClient;
     }
 
     public void sendCommandToAll(Map<String, Object> command) throws MqttException, JsonProcessingException {
