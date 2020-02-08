@@ -2,3 +2,4 @@ disco-controller-gui/.idea
 target
 .lck
 .idea
+*.iml
