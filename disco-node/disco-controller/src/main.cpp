@@ -2,7 +2,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
-#include "arduinoFFT.h"
+#include <arduinoFFT.h>
 
 #define PIN       5 
 #define NUMPIXELS 8 
@@ -18,12 +18,14 @@ arduinoFFT FFT = arduinoFFT();
 
 StaticJsonDocument<200> doc;
 
+/* Available modes */
 #define MODE_NOOP 0
 #define MODE_STROBO 1
 #define MODE_STATIC 2
 #define TRANSITION 3
 #define MODE_MIC_FFT 4
 
+/* Generator modes settings */
 unsigned long lastExecution = 0;
 int mode = MODE_MIC_FFT;
 int interval = 0;
@@ -38,6 +40,7 @@ double vReal[SAMPLES];
 double vImag[SAMPLES];
 unsigned long newTime, oldTime;
 int micFftFilter = 200;
+#define MIC_FFT_AMP_MAX 100.0
 int micFftAmp = 50;
 int micFftFreqOffset = 0;
 /* FFT END */
@@ -48,7 +51,7 @@ void connectToWifi() {
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, pass); 
-  while (WiFi.status() != WL_CONNECTED) 
+  while (WiFi.status() != WL_CONNECTED)
   {
     delay(500);
     Serial.print(".");
@@ -184,7 +187,7 @@ void setup() {
   showInitializedAnimation();
 }
 
-void executeSound() {
+void executeMicFft() {
    for (int i = 0; i < SAMPLES; i++) {
     newTime = micros()-oldTime;
     oldTime = newTime;
@@ -199,29 +202,33 @@ void executeSound() {
   
   int r = 0, g = 0, b = 0;
 
-   for (int i = 2; i < (SAMPLES/2); i++){ // Don't use sample 0 and only first SAMPLES/2 are usable. Each array eleement represents a frequency and its value the amplitude.
+// Don't use sample 0 and only first SAMPLES/2 are usable. Each array eleement represents a frequency and its value the amplitude.
+   for (int i = 2; i < (SAMPLES/2); i++){ 
     double value = vReal[i];
     int intValue = (int)value;
     
-    if (value > micFftFilter) { // Add a crude noise filter, 4 x amplitude or more
-      // if (i<=5 )             r = intValue; // 125Hz
-      if (i > (5 + micFftFreqOffset)   && i<= (12 + micFftFreqOffset))  r = intValue; // 250Hz
-      if (i > (12 + micFftFreqOffset)  && i<= (32 + micFftFreqOffset))  g = intValue; // 500Hz
-      if (i > (32 + micFftFreqOffset)  && i<= (62 + micFftFreqOffset))  b = intValue; // 1000H
+    int freqOffsetted = i + micFftFreqOffset;
+
+    if (value > micFftFilter) { 
+      if (freqOffsetted > 5  && freqOffsetted <= 12)  r = intValue; // low freq
+      if (freqOffsetted > 12 && freqOffsetted <= 32)  g = intValue; // mid freq
+      if (freqOffsetted > 32 && freqOffsetted <= 62)  b = intValue; // high freq
     }
   }
 
-  double amp = 100.0 / micFftAmp;
+  double amp = MIC_FFT_AMP_MAX / micFftAmp;
   displayColor(pixels.Color(r * amp, g * amp, b * amp));
 }
 
-void loop() {
-    if (!client.connected()) {
+void handleMqtt() {
+  if (!client.connected()) {
     reconnect();
   }
 
   client.loop();
+}
 
+void handleMode() {
   unsigned long time = millis();
   if(time - lastExecution > interval) {
     lastExecution = time;
@@ -234,8 +241,13 @@ void loop() {
         executeStatic();
       break;
       case MODE_MIC_FFT:
-        executeSound();
+        executeMicFft();
       break;
     }
   }
+}
+
+void loop() {
+  handleMqtt();
+  handleMode();
 }

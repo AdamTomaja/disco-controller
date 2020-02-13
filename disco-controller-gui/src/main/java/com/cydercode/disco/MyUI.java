@@ -81,7 +81,7 @@ public class MyUI extends UI {
 
         Slider micFftAmpSlider = new Slider("Mic FFT Amp");
         micFftAmpSlider.setWidth("500px");
-        micFftAmpSlider.setValue(50.);
+        micFftAmpSlider.setValue(100.);
         micFftAmpSlider.setMin(0);
         micFftAmpSlider.setMax(100);
 
