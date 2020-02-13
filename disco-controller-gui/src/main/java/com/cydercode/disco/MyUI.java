@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableMap;
 import com.vaadin.annotations.Theme;
 import com.vaadin.annotations.VaadinServletConfiguration;
+import com.vaadin.data.HasValue;
 import com.vaadin.external.org.slf4j.Logger;
 import com.vaadin.external.org.slf4j.LoggerFactory;
 import com.vaadin.server.VaadinRequest;
@@ -63,13 +64,43 @@ public class MyUI extends UI {
         });
 
         ComboBox<String> modeSelector = new ComboBox<>();
-        modeSelector.setItems("strobo", "static", "noop");
+        modeSelector.setItems("strobo", "static", "noop", "mic_fft");
         modeSelector.setCaption("Mode");
         modeSelector.addValueChangeListener(e -> {
             String value = e.getValue();
             ImmutableMap<String, Object> command = ImmutableMap.of("cmd", "setMode", "mode", value);
             trySendCommand(command);
         });
+
+        HorizontalLayout micFftLayout = new HorizontalLayout();
+        Slider micFftFilterSlider = new Slider("Mic FFT filter");
+        micFftFilterSlider.setWidth("500px");
+        micFftFilterSlider.setMin(0);
+        micFftFilterSlider.setMax(500);
+        micFftFilterSlider.setValue(150.);
+
+        Slider micFftAmpSlider = new Slider("Mic FFT Amp");
+        micFftAmpSlider.setWidth("500px");
+        micFftAmpSlider.setValue(50.);
+        micFftAmpSlider.setMin(0);
+        micFftAmpSlider.setMax(100);
+
+        Slider micFftFreqOffset = new Slider("Mic FFT Freq Offset");
+        micFftFreqOffset.setWidth("500px");
+        micFftFreqOffset.setMin(0);
+        micFftFreqOffset.setMax(500);
+
+        HasValue.ValueChangeListener<Double> doubleValueChangeListener = e -> {
+            trySendCommand(ImmutableMap.of("cmd", "setMicFft",
+                    "micFftFilter", micFftFilterSlider.getValue(),
+                    "micFftAmp", micFftAmpSlider.getValue(),
+                    "micFftFreqOffset", micFftFreqOffset.getValue()
+                    ));
+        };
+        micFftFilterSlider.addValueChangeListener(doubleValueChangeListener);
+        micFftAmpSlider.addValueChangeListener(doubleValueChangeListener);
+        micFftFreqOffset.addValueChangeListener(doubleValueChangeListener);
+        micFftLayout.addComponents(micFftFilterSlider, micFftAmpSlider, micFftFreqOffset);
 
         HorizontalLayout sequenceButtons = createSequenceButtons();
 
@@ -78,6 +109,7 @@ public class MyUI extends UI {
                 intervalSlider,
                 createColorsLayout(),
                 modeSelector,
+                micFftLayout,
                 sequenceButtons,
                 sequenceTextArea);
 
